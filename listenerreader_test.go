@@ -2,9 +2,7 @@ package listenerreader
 
 import (
 	"bufio"
-	"fmt"
 	"net"
-	"os"
 	"sort"
 	"testing"
 	"time"
@@ -32,13 +30,11 @@ func (s *ListenerReaderSuite) TestSomething(c *C) {
 
 	for i := 0; i < 3; i++ {
 		go func() {
-			fmt.Fprint(os.Stderr, "TEST client-dialing\n")
 			conn, err := net.Dial("tcp", addr)
 			c.Assert(err, IsNil)
 			defer conn.Close()
 			var prev bool
 			for line := range datach {
-				fmt.Fprint(os.Stderr, "TEST client-writing\n")
 				if prev {
 					n, err := conn.Write([]byte{'\n'})
 					c.Assert(n, Equals, 1)
@@ -50,7 +46,6 @@ func (s *ListenerReaderSuite) TestSomething(c *C) {
 				c.Assert(n, Equals, len(line))
 				c.Assert(err, IsNil)
 			}
-			fmt.Fprint(os.Stderr, "TEST client-done\n")
 		}()
 	}
 
@@ -68,11 +63,9 @@ func (s *ListenerReaderSuite) TestSomething(c *C) {
 	sort.Strings(data)
 
 	for _, line := range data {
-		fmt.Fprint(os.Stderr, "TEST datach-writing\n")
 		datach <- line
 	}
 	close(datach)
-	fmt.Fprint(os.Stderr, "TEST datach-closed\n")
 
 	scanner := bufio.NewScanner(lr)
 	scanned := []string{}
@@ -82,21 +75,17 @@ Loop:
 		ch := make(chan bool)
 		go func() {
 			defer close(ch)
-			fmt.Fprint(os.Stderr, "TEST server-scanning\n")
 			ch <- scanner.Scan()
-			fmt.Fprint(os.Stderr, "TEST server-scanned\n")
 		}()
 
 		select {
 		case <-ch:
-			fmt.Fprint(os.Stderr, "TEST server-scan collected\n")
 			scanned = append(scanned, string(scanner.Bytes()))
 			c.Assert(scanner.Err(), IsNil)
 			if len(scanned) >= len(data) {
 				break Loop
 			}
-		case <-time.After(1 * time.Second):
-			fmt.Fprint(os.Stderr, "TEST server-scan timed out\n")
+		case <-time.After(100 * time.Millisecond):
 			break Loop
 		}
 	}

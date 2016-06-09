@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 
 	"golang.org/x/net/context"
 )
@@ -54,10 +53,7 @@ func (l *ListenerReader) Read(p []byte) (int, error) {
 		return 0, fmt.Errorf("Cannot read into slice of len 0")
 	}
 
-	fmt.Fprint(os.Stderr, "LR Reading chan with p len ", len(p), "\n")
 	line := <-l.inputChan
-
-	fmt.Fprint(os.Stderr, "LR Read chan ", len(line), " bytes: ", string(line[0:64]), "\n")
 
 	if len(line) == 0 {
 		return 0, nil
@@ -66,8 +62,6 @@ func (l *ListenerReader) Read(p []byte) (int, error) {
 	// TODO: case where len(line) > len(p)
 
 	copied := copy(p, line)
-
-	// fmt.Fprint(os.Stderr, "LR Copied line to: ", p, "\n")
 
 	if copied != len(line) {
 		return copied, fmt.Errorf("Error while copying, copied %d bytes out of %d line bytes", copied, len(line))
@@ -80,21 +74,17 @@ func (l *ListenerReader) Read(p []byte) (int, error) {
 func (l *ListenerReader) Close() error {
 	// TODO: shut down everything we span off into goroutines
 
-	fmt.Fprint(os.Stderr, "LR Closing\n")
-
 	// close(l.inputChan) // FIXME: if any conns are still open and writing this may cause them to panic, should use a lock
 
 	return l.listener.Close()
 }
 
 func (l *ListenerReader) accepter() {
-	fmt.Fprint(os.Stderr, "LR Accepting ...\n")
 	for {
 		conn, err := l.listener.Accept()
 
 		// TODO: error case
 		if err == nil {
-			fmt.Fprint(os.Stderr, "LR Handling ...\n")
 			go l.handler(conn)
 		}
 	}
@@ -106,10 +96,8 @@ func (l *ListenerReader) handler(conn net.Conn) {
 	s := bufio.NewScanner(conn)
 	// s.Buffer(make([]byte, l.bufStartSize), l.bufMaxSize)
 
-	fmt.Fprint(os.Stderr, "LR Scanning ...\n")
 	for s.Scan() {
 		line := s.Bytes()
-		fmt.Fprint(os.Stderr, "LR Scanned ", len(line), " bytes: ", string(line[0:64]), "\n")
 		if len(line) > 0 {
 			// line is a slice, so it's a pointer to a region of memory, which
 			// may be overwritten by future Scans, so we have to copy it before
@@ -121,7 +109,6 @@ func (l *ListenerReader) handler(conn net.Conn) {
 			l.inputChan <- foo
 		}
 	}
-	fmt.Fprint(os.Stderr, "LR Scan done, err: ", s.Err(), "\n")
 
 	if err := s.Err(); err != nil && err != io.EOF {
 		// TODO: log somehow
