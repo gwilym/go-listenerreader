@@ -94,7 +94,7 @@ func (l *ListenerReader) handler(conn net.Conn) {
 	defer conn.Close()
 
 	s := bufio.NewScanner(conn)
-	// s.Buffer(make([]byte, l.bufStartSize), l.bufMaxSize)
+	s.Buffer(make([]byte, l.bufStartSize), l.bufMaxSize)
 
 	for s.Scan() {
 		line := s.Bytes()
